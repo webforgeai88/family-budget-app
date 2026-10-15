@@ -1,0 +1,14 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { cents, totals, breakdown, within, daysIn, previous, timeline, validDate, preset } from '../lib/budget.ts';
+import type { Operation, Category } from '../lib/budget.ts';
+const period={start:'2026-10-01',end:'2026-10-31'};
+const cats:Category[]=[{id:'food',name:'Продукты',kind:'expense',color:'#ffffff',icon:'🥑',archived:0},{id:'home',name:'Жильё',kind:'expense',color:'#ffffff',icon:'🏠',archived:0}];
+const ops:Operation[]=[{id:'1',categoryId:'salary',kind:'income',amount:10000000,date:'2026-10-01',comment:''},{id:'2',categoryId:'food',kind:'expense',amount:2000000,date:'2026-10-31',comment:''},{id:'3',categoryId:'home',kind:'expense',amount:3000000,date:'2026-10-15',comment:''}];
+test('контрольный набор: 100000 / 50000 / 50000 / 50%',()=>{const s=totals(ops,period);assert.equal(s.income,10000000);assert.equal(s.expense,5000000);assert.equal(s.result,5000000);assert.equal(s.saved,50);assert.equal(s.daily,5000000/31);assert.deepEqual(breakdown(ops,cats,'expense').map(c=>c.share),[60,40]);});
+test('копейки складываются без плавающего округления',()=>{assert.equal(cents('0,10')+cents('0.20'),30);assert.equal(cents('123.01'),12301);for(const s of ['0','-1','NaN','1e3','1.234','', '100000000000'])assert.throws(()=>cents(s));});
+test('обе границы периода включены; внешние даты исключены',()=>{assert.equal(within(ops,period).length,3);assert.equal(within(ops,{start:'2026-10-02',end:'2026-10-30'}).length,1);assert.equal(within(ops,period,'expense','food').length,1);});
+test('нет доходов: доля не рассчитывается, отрицательный результат допустим',()=>{const s=totals(ops.slice(1),period);assert.equal(s.saved,null);assert.equal(s.result,-5000000);assert.equal(totals([],period).daily,0);});
+test('предыдущий период имеет ту же длину, включая високосный год',()=>{assert.equal(daysIn({start:'2024-02-01',end:'2024-02-29'}),29);assert.deepEqual(previous(period),{start:'2026-08-31',end:'2026-09-30'});});
+test('графики сохраняют суммы при агрегации',()=>{for(const p of [period,{start:'2026-01-01',end:'2026-12-31'}]){const buckets=timeline(ops,p);assert.equal(buckets.reduce((s,b)=>s+b.income,0),10000000);assert.equal(buckets.reduce((s,b)=>s+b.expense,0),5000000);}});
+test('календарные даты валидируются без смещения часового пояса',()=>{assert.equal(validDate('2024-02-29'),true);for(const date of ['2026-02-29','2026-99-99','2026-10-00','bad'])assert.equal(validDate(date),false);});

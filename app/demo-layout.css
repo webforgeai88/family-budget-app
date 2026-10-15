@@ -1,0 +1,3 @@
+.flow-panel{display:flex;flex-direction:column}
+.flow-panel .chart-wrap{flex:1;min-height:275px;height:auto}
+@media(max-width:600px){.flow-panel .chart-wrap{min-height:250px}}
